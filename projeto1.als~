@@ -28,7 +28,6 @@ sig Time {
 
 }
 
-//mudanca
 fact {
 	//O numero de vendedores está sempre entre 3 e 5
 	all lj: Loja |  #(lj.vendedores) >= 3 and #(lj.vendedores) <= 5
