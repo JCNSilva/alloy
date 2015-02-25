@@ -11,16 +11,16 @@ one sig Loja {
 }
 
 abstract sig Funcionario {
-	clientes: set Cliente
+	clientes: set Cliente// -> Time
 }
 
 sig Vendedor, OperadorDeCaixa, PromotorDeCartao extends Funcionario {}
 
 sig Cliente {
 	nome: one Id,
-	itens: set Item,
-	compras: set Compra,
-	cartoes: set Cartao
+	itens: set Item /*-> Time*/,
+	compras: set Compra/* -> Time*/,
+	cartoes: set Cartao/* -> Time*/
 }
 
 sig Id {}
@@ -82,13 +82,19 @@ fact {
 
 }
 
+/*pred venda[v:Vendedor, c:Cliente, i:Item, t,t':Time] {
+	
+	c not in (v.clientes).t
+	(v.clientes).t' = (v.clientes).t + c
+	(c.itens).t' = (c.itens).t + i
+	
+}*/
+
 pred show[]{}
 run show for 11
 
 /* TODO LIST */
-	//O cliente só pode ter um cartão se for atendido por um promotor de cartão
-	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
-	//O cliente só pode ter um item se for atendido por um vendedor
 	//Funções com Time: vender, fazer cartão, passar compra, checar premiacao
+	//Numero de compras <= numero de itens
 
 
