@@ -60,7 +60,25 @@ fact {
 	all cliente: Cliente | one cliente.nome
 
 	//Toda Id pertence a um Cliente
-	all id: Id | one id.~nome 
+	all id: Id | one id.~nome
+
+	//O cliente só pode ter um cartão se for atendido por um promotor de cartão
+	all prom: PromotorDeCartao | all c: Cliente | c not in prom.clientes implies  #(c.cartoes) = 0
+	
+	//Cada cartão só pode ser relacionado a um cliente
+	all car: Cartao | one car.~cartoes
+
+	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
+	all op: OperadorDeCaixa | all c: Cliente | c not in op.clientes implies  #(c.compras) = 0
+
+	//Cada compra só pode ser relacionado a um cliente
+	all com: Compra | one com.~compras
+
+	//O cliente só pode ter um item se for atendido por um vendedor
+	all v: Vendedor | all c: Cliente | c not in v.clientes implies  #(c.itens) = 0
+
+	//Cada item só pode ser relacionado a um cliente
+	all i: Item | one i.~itens
 
 }
 
