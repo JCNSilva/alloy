@@ -2,6 +2,8 @@ module projeto
 
 open util/ordering[Time]
 
+//ASSINATURAS
+
 sig Time {}
 
 one sig Loja {
@@ -18,7 +20,7 @@ sig Vendedor, OperadorDeCaixa, PromotorDeCartao extends Funcionario {}
 
 sig Cliente {
 	nome: one Id,
-	itens: set Item /*-> Time*/,
+	/*itens: set Item -> Time*/,
 	compras: set Compra/* -> Time*/,
 	cartoes: set Cartao/* -> Time*/
 }
@@ -29,7 +31,9 @@ abstract sig Item {}
 
 sig Calcado, Roupa extends Item {}
 
-abstract sig Compra {}
+abstract sig Compra {
+	itens: set Item
+}
 
 sig CompraCheque, CompraAPrazo extends Compra {}
 
@@ -37,7 +41,10 @@ abstract sig Cartao {}
 
 sig CartaoSimples, CartaoComDependente extends Cartao {}
 
-//mudanca
+
+
+//DECLARAÇÃO DOS FATOS
+
 fact {
 	//O numero de vendedores está sempre entre 3 e 5
 	all lj: Loja |  #(lj.vendedores) >= 3 and #(lj.vendedores) <= 5
@@ -63,23 +70,57 @@ fact {
 	all id: Id | one id.~nome
 
 	//O cliente só pode ter um cartão se for atendido por um promotor de cartão
-	all prom: PromotorDeCartao | all c: Cliente | c not in prom.clientes implies  #(c.cartoes) = 0
+	all prom: PromotorDeCartao | all c: Cliente |  fezCartoes[c] implies ehCliente[c, prom]
 	
 	//Cada cartão só pode ser relacionado a um cliente
 	all car: Cartao | one car.~cartoes
 
+	//Todo cliente pode ter no máximo um cartão
+	all c: Cliente | lone c.cartoes
+
 	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
-	all op: OperadorDeCaixa | all c: Cliente | c not in op.clientes implies  #(c.compras) = 0
+	all op: OperadorDeCaixa | all c: Cliente | fezCompras[c] implies ehCliente[c, op]
 
 	//Cada compra só pode ser relacionado a um cliente
 	all com: Compra | one com.~compras
 
+	//Cada cliente faz no máximo uma compra
+	all c: Cliente | lone c.compras
+
+	//Uma compra deve ter itens
+	all com: Compra | some com.itens
+
 	//O cliente só pode ter um item se for atendido por um vendedor
-	all v: Vendedor | all c: Cliente | c not in v.clientes implies  #(c.itens) = 0
+	all v: Vendedor | all c: Cliente | temItem[c] implies ehCliente[c,v]
 
 	//Cada item só pode ser relacionado a um cliente
 	all i: Item | one i.~itens
 
+	//Se um cliente foi atendido por operador de caixa, ele também deve ter sido atendido por um vendedor
+	all op: OperadorDeCaixa | all v: Vendedor | all c: Cliente | c in v.clientes iff c in op.clientes
+
+}
+
+
+
+//DECLARAÇÃO DOS PREDICADOS
+
+pred show[]{}
+
+pred ehCliente[c:Cliente, f:Funcionario]{
+	c in f.clientes
+}
+
+pred fezCompras[c:Cliente]{
+	some c.compras
+}
+
+pred fezCartoes[c:Cliente]{
+	some c.cartoes
+}
+
+pred temItem[c:Cliente]{
+	some (c.compras).itens
 }
 
 /*pred venda[v:Vendedor, c:Cliente, i:Item, t,t':Time] {
@@ -90,11 +131,12 @@ fact {
 	
 }*/
 
-pred show[]{}
+
 run show for 11
 
 /* TODO LIST */
 	//Funções com Time: vender, fazer cartão, passar compra, checar premiacao
-	//Numero de compras <= numero de itens
+	//Numero de compras <= numero de itens (???)
+
 
 
