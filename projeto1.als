@@ -20,7 +20,6 @@ sig Vendedor, OperadorDeCaixa, PromotorDeCartao extends Funcionario {}
 
 sig Cliente {
 	nome: one Id,
-	/*itens: set Item -> Time*/,
 	compras: set Compra/* -> Time*/,
 	cartoes: set Cartao/* -> Time*/
 }
@@ -96,8 +95,11 @@ fact {
 	//Cada item só pode ser relacionado a um cliente
 	all i: Item | one i.~itens
 
-	//Se um cliente foi atendido por operador de caixa, ele também deve ter sido atendido por um vendedor
-	all op: OperadorDeCaixa | all v: Vendedor | all c: Cliente | c in v.clientes iff c in op.clientes
+	//Se um cliente foi atendido por um vendedor, ele também deve ter sido atendido por um operador de caixa
+	all op: OperadorDeCaixa | all v: Vendedor | all c: Cliente | c in op.clientes iff c in  v.clientes 
+
+	//Todo cliente só pode ter efetuado compra com um vendedor
+	all c: Cliente | all v: Vendedor | temItem[c]  one v
 
 }
 
@@ -109,6 +111,18 @@ pred show[]{}
 
 pred ehCliente[c:Cliente, f:Funcionario]{
 	c in f.clientes
+}
+
+pred ehVendedor[f: Funcionario, lj: Loja] {
+	f in lj.vendedores
+}
+
+pred ehOperadorDeCaixa[f: Funcionario, lj: Loja]{
+	f in lj.operadores
+}
+
+pred ehPromotorDeCaixa[f: Funcionario, lj: Loja]{
+	f in lj.promotores
 }
 
 pred fezCompras[c:Cliente]{
@@ -138,5 +152,10 @@ run show for 11
 	//Funções com Time: vender, fazer cartão, passar compra, checar premiacao
 	//Numero de compras <= numero de itens (???)
 
+//Perguntas
+//Pode existir cliente que não faz compras ou cartão?
+//O cliente pode ter mais de um cartão?
+//O cliente pode fazer mais de uma compra?
+//O cliente pode ser atendido por mais de um funcionario do mesmo tipo?
 
 
