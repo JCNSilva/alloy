@@ -77,6 +77,7 @@ fact funcionarios {
 
 fact compras {
 	//Cada compra só pode ser relacionado a um cliente
+	/*O unico que tem um conjunto de compras é o proprio Cliente, esse fato é necessário?*/
 	all com: Compra | one com.~compras
 
 	//Cada cliente faz no máximo uma compra
@@ -89,6 +90,7 @@ fact compras {
 
 fact cartoes {
 	//Cada cartão só pode ser relacionado a um cliente
+	/*msm raciocionio para compras*/
 	all car: Cartao | one car.~cartoes
 
 	//Todo cliente pode ter no máximo um cartão
@@ -98,6 +100,7 @@ fact cartoes {
 
 fact itens {
 	//Cada item só pode ser relacionado a um cliente
+	/*msm raciocionio para compras*/
 	all i: Item | one i.~itens
 }
 
