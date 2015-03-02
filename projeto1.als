@@ -16,6 +16,9 @@ one sig Loja {
 
 abstract sig Funcionario {
 	clientes: set Cliente// -> Time
+	/* Tenta assim, acredito q o 'set' da problema
+	clientes: Cliente -> Time
+	*/
 }
 
 sig Vendedor, OperadorDeCaixa, PromotorDeCartao extends Funcionario {}
@@ -24,6 +27,10 @@ sig Cliente {
 	nome: one Id, 
 	compras: set Compra/* -> Time*/,
 	cartoes: set Cartao/* -> Time*/
+	/* Msm raciocinio
+	compras: Compra lone -> Time,
+	cartoes: Cartao lone -> Time
+	*/
 }
 
 sig Id{}
@@ -34,6 +41,7 @@ sig Calcado, Roupa extends Item {}
 
 abstract sig Compra {
 	itens: set Item
+	/* Não deveria ser Time tmb?*/
 }
 
 sig CompraCheque, CompraAPrazo extends Compra {}
@@ -142,6 +150,13 @@ pred ehCliente[c:Cliente, f:Funcionario]{
 	c in f.clientes
 }
 
+/* em alguns exemplos q vi, msm sem ser um pred time, é necessário informar esse parametro,
+porque se não, da aquele erro de tipo (se aplica a outros pred
+
+pred ehCliente[c:Cliente, f:Funcionario, t: Time]{
+	c in f.clientes.t
+}*/
+
 pred ehVendedor[f: Funcionario, lj: Loja] {
 	f in lj.vendedores
 }
@@ -177,7 +192,22 @@ pred temItem[c:Cliente]{
 
 
 //DECLARAÇÃO DOS ASSERTS
+assert aLojaTemVendedores{
+	all l:Loja | #vendedoresDaLoja[l] > 0
+}
 
+assert aLojaTemPromotores{
+	all l:Loja | #promotoresDaLoja[l] > 0
+}
+
+assert aLojaTemOperadores{
+	all l:Loja | #operadoresDaLoja[l] > 0
+}
+
+
+--check aLojaTemVendedores for 11
+--check aLojaTemPromotores for 11
+--check aLojaTemOperadores for 11
 
 //RUNs E CHECKs
 run show for 11
