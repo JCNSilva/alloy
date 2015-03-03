@@ -77,7 +77,6 @@ fact funcionarios {
 
 fact compras {
 	//Cada compra só pode ser relacionado a um cliente
-	/*O unico que tem um conjunto de compras é o proprio Cliente, esse fato é necessário?*/
 	all com: Compra | one com.~compras
 
 	//Cada cliente faz no máximo uma compra
@@ -90,7 +89,6 @@ fact compras {
 
 fact cartoes {
 	//Cada cartão só pode ser relacionado a um cliente
-	/*msm raciocionio para compras*/
 	all car: Cartao | one car.~cartoes
 
 	//Todo cliente pode ter no máximo um cartão
@@ -100,7 +98,6 @@ fact cartoes {
 
 fact itens {
 	//Cada item só pode ser relacionado a um cliente
-	/*msm raciocionio para compras*/
 	all i: Item | one i.~itens
 }
 
@@ -116,7 +113,9 @@ fact cliente {
 	all id: Id | one id.~nome
 
 	//O cliente só pode ter um cartão se for atendido por um promotor de cartão
-	all prom: PromotorDeCartao | all c: Cliente |  fezCartoes[c] implies ehCliente[c, prom]
+	//all prom: PromotorDeCartao | all c: Cliente |  fezCartoes[c] implies ehCliente[c, prom]
+	all c: Cliente |  lone prom: PromotorDeCartao |  fezCartoes[c] implies ehCliente[c, prom] //se não existe promotor ehCliente deve ser falso
+
 
 	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
 	all op: OperadorDeCaixa | all c: Cliente | fezCompras[c] implies ehCliente[c, op]
@@ -150,7 +149,7 @@ fun operadoresDaLoja[lj: Loja]: set OperadorDeCaixa{
 pred show[]{}
 
 pred ehCliente[c:Cliente, f:Funcionario]{
-	c in f.clientes
+	c in f.clientes //se f é um conjunto vazio, deveria retornar falso
 }
 
 /* em alguns exemplos q vi, msm sem ser um pred time, é necessário informar esse parametro,
