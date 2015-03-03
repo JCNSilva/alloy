@@ -3,7 +3,6 @@ module projeto
 open util/ordering[Time]
 
 
-
 //DECLARAÇÃO DAS ASSINATURAS
 
 sig Time {}
@@ -14,14 +13,19 @@ one sig Loja {
 	promotores: some PromotorDeCartao
 }
 
-abstract sig Funcionario {
-	clientes: set Cliente// -> Time
-	/* Tenta assim, acredito q o 'set' da problema
-	clientes: Cliente -> Time
-	*/
+abstract sig Funcionario {}
+
+sig Vendedor extends Funcionario {
+	clientesVendedor: set Cliente
 }
 
-sig Vendedor, OperadorDeCaixa, PromotorDeCartao extends Funcionario {}
+sig OperadorDeCaixa extends Funcionario {
+	clientesOperador: set Cliente
+}
+
+sig PromotorDeCartao extends Funcionario {
+	clientesPromotor: set Cliente
+}
 
 sig Cliente {
 	nome: one Id, 
@@ -104,7 +108,7 @@ fact itens {
 
 fact cliente {
 	//Todo cliente foi atendido por pelo menos um funcionário
-	all cliente: Cliente | some cliente.~clientes
+	all cliente: Cliente | clienteFoiAtendido[cliente]
 
 	//A Id de um cliente deve ser única
 	all cliente: Cliente | one cliente.nome
@@ -112,19 +116,26 @@ fact cliente {
 	//Toda Id pertence a um Cliente
 	all id: Id | one id.~nome
 
-	//O cliente só pode ter um cartão se for atendido por um promotor de cartão
-	//all prom: PromotorDeCartao | all c: Cliente |  fezCartoes[c] implies ehCliente[c, prom]
-	all c: Cliente |  lone prom: PromotorDeCartao |  fezCartoes[c] implies ehCliente[c, prom] //se não existe promotor ehCliente deve ser falso
+	//Todo cliente é atendido por um ou nenhum promotor
+	all c: Cliente | lone prom: PromotorDeCartao | ehClientePromotor[c, prom]
 
+	//Todo cliente é atendido por um ou nenhum operador
+	all c: Cliente | lone op:OperadorDeCaixa | ehClienteOperador[c, op]
 
-	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
-	all op: OperadorDeCaixa | all c: Cliente | fezCompras[c] implies ehCliente[c, op]
-
-	//O cliente só pode ter um item se for atendido por um vendedor
-	all v: Vendedor | all c: Cliente | temItem[c] implies ehCliente[c,v]
+	//Todo cliente é atendido por um ou nenhum vendedor
+	all c: Cliente | lone v: Vendedor | ehClienteVendedor[c,v]
 
 	//Se um cliente foi atendido por um vendedor, ele também deve ter sido atendido por um operador de caixa
-	all op: OperadorDeCaixa | all v: Vendedor | all c: Cliente | ehCliente[c, op] implies ehCliente[c, v]
+	//all op: OperadorDeCaixa | all v: Vendedor | all c: Cliente | ehClienteOperador[c, op] implies ehClienteVendedor[c, v]
+
+	//O cliente só pode ter um cartão se for atendido por um promotor de cartão
+	all c: Cliente | fezCartoes[c] implies one c.~clientesPromotor
+	
+	//O cliente só pode ter um item se for atendido por um vendedor
+	all c: Cliente | temItem[c] implies one c.~clientesVendedor
+
+	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
+	all c: Cliente | fezCompras[c] implies one c.~clientesOperador
 }
 
 
@@ -148,17 +159,24 @@ fun operadoresDaLoja[lj: Loja]: set OperadorDeCaixa{
 
 pred show[]{}
 
-pred ehCliente[c:Cliente, f:Funcionario]{
-	c in f.clientes //se f é um conjunto vazio, deveria retornar falso
+pred ehClientePromotor[c:Cliente, prom:PromotorDeCartao]{
+	c in prom.clientesPromotor
+}
+
+pred ehClienteOperador[c:Cliente, op:OperadorDeCaixa]{
+	c in op.clientesOperador 
+}
+
+pred ehClienteVendedor[c:Cliente, v:Vendedor]{
+	c in v.clientesVendedor
+}
+
+pred clienteFoiAtendido[cliente:Cliente]{
+	some cliente.~clientesVendedor or some cliente.~clientesOperador or some cliente.~clientesPromotor
 }
 
 /* em alguns exemplos q vi, msm sem ser um pred time, é necessário informar esse parametro,
-porque se não, da aquele erro de tipo (se aplica a outros pred
-
-pred ehCliente[c:Cliente, f:Funcionario, t: Time]{
-	c in f.clientes.t
-}*/
-
+porque se não, da aquele erro de tipo (se aplica a outros pred*/
 pred ehVendedor[f: Funcionario, lj: Loja] {
 	f in lj.vendedores
 }
@@ -194,6 +212,18 @@ pred temItem[c:Cliente]{
 
 
 //DECLARAÇÃO DOS ASSERTS
+assert clienteNaoFoiAtendidoPorMuitosVendedores {
+	all c:Cliente | #(c.~clientesVendedor) = 0 or #(c.~clientesVendedor) = 1
+}
+
+assert clienteNaoFoiAtendidoPorMuitosPromotores{
+	all c:Cliente | #(c.~clientesPromotor) = 0 or #(c.~clientesPromotor) = 1
+}
+
+assert clienteNaoFoiAtendidoPorMuitosOperadores {
+	all c:Cliente | #(c.~clientesOperador) = 0 or #(c.~clientesOperador) = 1
+}
+
 assert aLojaTemVendedores{
 	all l:Loja | #vendedoresDaLoja[l] > 0
 }
@@ -207,20 +237,24 @@ assert aLojaTemOperadores{
 }
 
 
+//RUNs E CHECKs
+run show for 11
 --check aLojaTemVendedores for 11
 --check aLojaTemPromotores for 11
 --check aLojaTemOperadores for 11
+--check clienteNaoFoiAtendidoPorMuitosVendedores for 11
+--check clienteNaoFoiAtendidoPorMuitosPromotores for 11
+--check clienteNaoFoiAtendidoPorMuitosOperadores for 11
 
-//RUNs E CHECKs
-run show for 11
+
 
 /* TODO LIST */
 	//Funções com Time: vender, fazer cartão, passar compra, checar premiacao
 
 //Perguntas
-//Pode existir cliente que não faz compras ou cartão?
-//O cliente pode ter mais de um cartão?
-//O cliente pode fazer mais de uma compra?
-//O cliente pode ser atendido por mais de um funcionario do mesmo tipo?
+//Pode existir cliente que não faz compras ou cartão? depende
+//O cliente pode ter mais de um cartão? n
+//O cliente pode fazer mais de uma compra? s
+//O cliente pode ser atendido por mais de um funcionario do mesmo tipo? n
 
 
