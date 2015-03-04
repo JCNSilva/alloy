@@ -101,7 +101,7 @@ fact cartoes {
 
 
 fact itens {
-	//Cada item só pode ser relacionado a um cliente
+	//Cada item só pode ser relacionado a uma compra
 	all i: Item | one i.~itens
 }
 
@@ -117,25 +117,25 @@ fact cliente {
 	all id: Id | one id.~nome
 
 	//Todo cliente é atendido por um ou nenhum promotor
-	all c: Cliente | lone prom: PromotorDeCartao | ehClientePromotor[c, prom]
+	all c: Cliente | lone prom: PromotorDeCartao | ehCliente[c, prom]
 
 	//Todo cliente é atendido por um ou nenhum operador
-	all c: Cliente | lone op:OperadorDeCaixa | ehClienteOperador[c, op]
+	all c: Cliente | lone op:OperadorDeCaixa | ehCliente[c, op]
 
 	//Todo cliente é atendido por um ou nenhum vendedor
-	all c: Cliente | lone v: Vendedor | ehClienteVendedor[c,v]
+	all c: Cliente | lone v: Vendedor | ehCliente[c,v]
 
 	//Se um cliente foi atendido por um vendedor, ele também deve ter sido atendido por um operador de caixa
-	//all op: OperadorDeCaixa | all v: Vendedor | all c: Cliente | ehClienteOperador[c, op] implies ehClienteVendedor[c, v]
+	all c: Cliente | one operadoresAssociados[c] implies one vendedoresAssociados[c]
 
 	//O cliente só pode ter um cartão se for atendido por um promotor de cartão
-	all c: Cliente | fezCartoes[c] implies one c.~clientesPromotor
+	all c: Cliente | fezCartoes[c] implies one promotoresAssociados[c]
 	
 	//O cliente só pode ter um item se for atendido por um vendedor
-	all c: Cliente | temItem[c] implies one c.~clientesVendedor
+	all c: Cliente | temItem[c] implies one vendedoresAssociados[c]
 
 	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
-	all c: Cliente | fezCompras[c] implies one c.~clientesOperador
+	all c: Cliente | fezCompras[c] implies one operadoresAssociados[c]
 }
 
 
@@ -154,20 +154,32 @@ fun operadoresDaLoja[lj: Loja]: set OperadorDeCaixa{
 	lj.operadores
 }
 
+fun vendedoresAssociados[c:Cliente]: set Vendedor {
+	c.~clientesVendedor
+}
+
+fun promotoresAssociados[c:Cliente]: set PromotorDeCartao {
+	c.~clientesPromotor
+}
+
+fun operadoresAssociados[c:Cliente]: set OperadorDeCaixa {
+	c.~clientesOperador
+}
+
 
 //DECLARAÇÃO DOS PREDICADOS
 
 pred show[]{}
 
-pred ehClientePromotor[c:Cliente, prom:PromotorDeCartao]{
+pred ehCliente[c:Cliente, prom:PromotorDeCartao]{
 	c in prom.clientesPromotor
 }
 
-pred ehClienteOperador[c:Cliente, op:OperadorDeCaixa]{
+pred ehCliente[c:Cliente, op:OperadorDeCaixa]{
 	c in op.clientesOperador 
 }
 
-pred ehClienteVendedor[c:Cliente, v:Vendedor]{
+pred ehCliente[c:Cliente, v:Vendedor]{
 	c in v.clientesVendedor
 }
 
@@ -175,8 +187,6 @@ pred clienteFoiAtendido[cliente:Cliente]{
 	some cliente.~clientesVendedor or some cliente.~clientesOperador or some cliente.~clientesPromotor
 }
 
-/* em alguns exemplos q vi, msm sem ser um pred time, é necessário informar esse parametro,
-porque se não, da aquele erro de tipo (se aplica a outros pred*/
 pred ehVendedor[f: Funcionario, lj: Loja] {
 	f in lj.vendedores
 }
@@ -236,6 +246,10 @@ assert aLojaTemOperadores{
 	all l:Loja | #operadoresDaLoja[l] > 0
 }
 
+assert seNaoEhClienteVendedorNaoEhClienteOperador{
+	all c: Cliente | no c.~clientesVendedor implies no c.~clientesOperador
+}
+
 
 //RUNs E CHECKs
 run show for 11
@@ -245,6 +259,7 @@ run show for 11
 --check clienteNaoFoiAtendidoPorMuitosVendedores for 11
 --check clienteNaoFoiAtendidoPorMuitosPromotores for 11
 --check clienteNaoFoiAtendidoPorMuitosOperadores for 11
+--check seNaoEhClienteVendedorNaoEhClienteOperador for 11
 
 
 
