@@ -121,7 +121,6 @@ fact cliente {
 	//Toda Id pertence a um Cliente
 	all id: Id | one id.~nome
 
-	//all c: Cliente, prom: Promotor, t: Time, t': Time | 
 	//Todo cliente é atendido por um único  ou nenhum promotor
 	all c: Cliente | all prom: PromotorDeCartao | all t, t':Time | ehCliente[c, prom,t] and promotorDoClienteNaoMuda[c, prom, t,t']
 
@@ -129,30 +128,30 @@ fact cliente {
 	all c: Cliente | all op:OperadorDeCaixa | all t, t':Time | ehCliente[c, op,t] and operadorDoClienteNaoMuda[c, op, t,t']
 
 	//Todo cliente é atendido por um único ou nenhum vendedor
-	all c: Cliente | all v: Vendedor | all t, t':Time | ehCliente[c,v,t] and vendedorDoClienteNaoMuda[c, v, t,t']
+	all c: Cliente | all v: Vendedor | all t, t':Time | ehCliente[c,v,t] and vendedorDoClienteNaoMuda[c, v, t, t']
 
 	//Se um cliente foi atendido por um vendedor, ele também deve ter sido atendido por um operador de caixa
 	all c: Cliente | all t:Time | one operadoresAssociados[c,t] implies one vendedoresAssociados[c,t]
 
 	//O cliente só pode ter um cartão se for atendido por um promotor de cartão
-	all c: Cliente | all t:Time |  fezCartoes[c,t] implies one promotoresAssociados[c,t]
+	all c: Cliente | all t,t':Time |  fezCartoes[c,t] iff one promotoresAssociados[c,t] and cartaoDoClienteNaoMuda[c, t,t']
 	
 	//O cliente só pode ter um item se for atendido por um vendedor
-	all c: Cliente | all t:Time | temItem[c,t] implies one vendedoresAssociados[c,t]
+	all c: Cliente | all t:Time | temItem[c,t] iff one vendedoresAssociados[c,t]
 
 	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
-	all c: Cliente | all t:Time | fezCompras[c,t] implies one operadoresAssociados[c,t]
+	all c: Cliente | all t,t':Time | fezCompras[c,t] iff one operadoresAssociados[c,t] and comprasDoClienteNaoMudam[c, t,t']
 }
 
-
-/*fact traces {
+//TRACES
+fact traces {
 	init[first]
-	all pre: Time - last | let pos = pre.next |
-	all c: Cliente, op:OperadorDeCaixa, prom: PromotorDeCartao, v: Vendedor | 
+	all pre: Time-last | let pos = pre.next |
+	all c: Cliente, op:OperadorDeCaixa, prom:PromotorDeCartao,  v: Vendedor | 
 	fazerCartao[c, prom, pre, pos] or
 	efetuarVenda[c, v, pre, pos] and
 	passarCompra[c, op, pre, pos]
-}*/
+}
 
 
 
@@ -202,8 +201,8 @@ pred ehCliente[c:Cliente, v:Vendedor, t: Time]{
 		(c in v.clientesVendedor.t => (all v2: Vendedor - v | c !in v2.clientesVendedor.t))
 }
 
-pred clienteFoiAtendido[cliente:Cliente, t:Time]{
-	some cliente.~(clientesVendedor.t) or some cliente.~(clientesOperador.t) or some cliente.~(clientesPromotor.t)
+pred clienteFoiAtendido[c:Cliente, t:Time]{
+	some c.~(clientesVendedor.t) or some c.~(clientesOperador.t) or some c.~(clientesPromotor.t)
 }
 
 pred ehVendedor[f: Funcionario, lj: Loja] {
@@ -230,10 +229,9 @@ pred temItem[c:Cliente, t:Time]{
 	some itensDeCompra[c,t]
 }
 
-pred init [t:Time] {
-	no clientesPromotor.t
-	no clientesVendedor.t
-	no clientesOperador.t
+
+pred vendedorDoClienteNaoMuda[cliente: Cliente, v:Vendedor, t,t': Time]{
+	v.(clientesVendedor.t') = v.(clientesVendedor.t)
 }
 
 
@@ -242,31 +240,50 @@ pred promotorDoClienteNaoMuda[cliente: Cliente, prom: PromotorDeCartao, t,t': Ti
 }
 
 
-pred fazerCartao[c:Cliente, prom:PromotorDeCartao, t,t': Time] {
-	c !in (prom.clientesPromotor).t
-		(prom.clientesPromotor).t' = (prom.clientesPromotor).t + c
-	promotorDoClienteNaoMuda[c, prom, t,t']
-}
-
-pred vendedorDoClienteNaoMuda[cliente: Cliente, v:Vendedor, t,t': Time]{
-	v.(clientesVendedor.t') = v.(clientesVendedor.t)
-}
-
-pred efetuarVenda[c:Cliente, v:Vendedor, t,t':Time] {
-	c !in (v.clientesVendedor).t
-		(v.clientesVendedor).t' = (v.clientesVendedor).t + c
-	vendedorDoClienteNaoMuda[c, v, t, t']
-}
-
 pred operadorDoClienteNaoMuda[c: Cliente, op: OperadorDeCaixa, t,t': Time]{
 	op.(clientesOperador.t') = op.(clientesOperador.t)
 }
 
+
+pred cartaoDoClienteNaoMuda[c:Cliente, t,t': Time]{
+	c.(cartoes.t') = c.(cartoes.t)
+}
+
+
+pred comprasDoClienteNaoMudam[c:Cliente, t,t': Time]{
+	c.(compras.t') = c.(compras.t)
+	itensDeCompra[c,t'] = itensDeCompra[c,t]
+}
+
+
+//AÇÕES COM TIME
+
+pred init [t:Time] {
+/*	no (PromotorDeCartao.clientesPromotor).t
+	no (Vendedor.clientesVendedor).t
+	no (OperadorDeCaixa.clientesOperador).t*/
+}
+
+
+pred fazerCartao[c:Cliente, prom:PromotorDeCartao, t,t': Time] {
+	c !in (prom.clientesPromotor).t
+		(prom.clientesPromotor).t' = (prom.clientesPromotor).t + c
+}
+
+
+pred efetuarVenda[c:Cliente, v:Vendedor, t,t':Time] {
+	c !in (v.clientesVendedor).t
+		(v.clientesVendedor).t' = (v.clientesVendedor).t + c
+}
+
+
 pred passarCompra[c: Cliente, op: OperadorDeCaixa,t, t': Time]{
 	c !in (op.clientesOperador).t
 		(op.clientesOperador).t' = (op.clientesOperador).t + c
-	operadorDoClienteNaoMuda[c, op, t ,t']
 }
+
+
+
 
 
  
@@ -315,10 +332,6 @@ check seNaoEhClienteVendedorNaoEhClienteOperador for 11
 
 
 /* TODO LIST */
-	//Funções com Time: vender, fazer cartão, passar compra, checar premiacao
-
-//Perguntas
-//Pode existir cliente que não faz compras ou cartão? depende
-//O cliente pode fazer mais de uma compra? s
+	//Funções com Time: checar premiacao
 
 
