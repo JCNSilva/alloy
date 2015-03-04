@@ -122,14 +122,14 @@ fact cliente {
 	all id: Id | one id.~nome
 
 	//all c: Cliente, prom: Promotor, t: Time, t': Time | 
-	//Todo cliente é atendido por um ou nenhum promotor
-	all c: Cliente | all prom: PromotorDeCartao | all t:Time | ehCliente[c, prom,t]
+	//Todo cliente é atendido por um único  ou nenhum promotor
+	all c: Cliente | all prom: PromotorDeCartao | all t, t':Time | ehCliente[c, prom,t] and promotorDoClienteNaoMuda[c, prom, t,t']
 
-	//Todo cliente é atendido por um ou nenhum operador
-	all c: Cliente | all op:OperadorDeCaixa | all t:Time | ehCliente[c, op,t]
+	//Todo cliente é atendido por um único  ou nenhum operador
+	all c: Cliente | all op:OperadorDeCaixa | all t, t':Time | ehCliente[c, op,t] and operadorDoClienteNaoMuda[c, op, t,t']
 
-	//Todo cliente é atendido por um ou nenhum vendedor
-	all c: Cliente | all v: Vendedor | all t:Time | ehCliente[c,v,t]
+	//Todo cliente é atendido por um único ou nenhum vendedor
+	all c: Cliente | all v: Vendedor | all t, t':Time | ehCliente[c,v,t] and vendedorDoClienteNaoMuda[c, v, t,t']
 
 	//Se um cliente foi atendido por um vendedor, ele também deve ter sido atendido por um operador de caixa
 	all c: Cliente | all t:Time | one operadoresAssociados[c,t] implies one vendedoresAssociados[c,t]
