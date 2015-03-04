@@ -16,25 +16,21 @@ one sig Loja {
 abstract sig Funcionario {}
 
 sig Vendedor extends Funcionario {
-	clientesVendedor: set Cliente
+	clientesVendedor: Cliente lone -> Time
 }
 
 sig OperadorDeCaixa extends Funcionario {
-	clientesOperador: set Cliente
+	clientesOperador: Cliente lone -> Time
 }
 
 sig PromotorDeCartao extends Funcionario {
-	clientesPromotor: set Cliente
+	clientesPromotor: Cliente lone -> Time
 }
 
 sig Cliente {
 	nome: one Id, 
-	compras: set Compra/* -> Time*/,
-	cartoes: set Cartao/* -> Time*/
-	/* Msm raciocinio
 	compras: Compra lone -> Time,
 	cartoes: Cartao lone -> Time
-	*/
 }
 
 sig Id{}
@@ -44,8 +40,7 @@ abstract sig Item {}
 sig Calcado, Roupa extends Item {}
 
 abstract sig Compra {
-	itens: set Item
-	/* Não deveria ser Time tmb?*/
+	itens: Item lone -> Time
 }
 
 sig CompraCheque, CompraAPrazo extends Compra {}
@@ -81,34 +76,34 @@ fact funcionarios {
 
 fact compras {
 	//Cada compra só pode ser relacionado a um cliente
-	all com: Compra | one com.~compras
+	all com: Compra | all t: Time | one com.~(compras.t)
 
 	//Cada cliente faz no máximo uma compra
-	all c: Cliente | lone c.compras
+	all c: Cliente | all t:Time | lone c.(compras.t)
 
 	//Uma compra deve ter itens
-	all com: Compra | some com.itens
+	all com: Compra | all t:Time | some com.(itens.t)
 }
 
 
 fact cartoes {
 	//Cada cartão só pode ser relacionado a um cliente
-	all car: Cartao | one car.~cartoes
+	all car: Cartao | all t:Time | one car.~(cartoes.t)
 
 	//Todo cliente pode ter no máximo um cartão
-	all c: Cliente | lone c.cartoes
+	all c: Cliente | all t:Time | lone c.(cartoes.t)
 }
 
 
 fact itens {
 	//Cada item só pode ser relacionado a uma compra
-	all i: Item | one i.~itens
+	all i: Item | all t:Time | one i.~(itens.t)
 }
 
 
 fact cliente {
 	//Todo cliente foi atendido por pelo menos um funcionário
-	all cliente: Cliente | clienteFoiAtendido[cliente]
+	all cliente: Cliente | all t:Time | clienteFoiAtendido[cliente,t]
 
 	//A Id de um cliente deve ser única
 	all cliente: Cliente | one cliente.nome
@@ -117,31 +112,30 @@ fact cliente {
 	all id: Id | one id.~nome
 
 	//Todo cliente é atendido por um ou nenhum promotor
-	all c: Cliente | lone prom: PromotorDeCartao | ehCliente[c, prom]
+	all c: Cliente | lone prom: PromotorDeCartao | all t:Time | ehCliente[c, prom,t]
 
 	//Todo cliente é atendido por um ou nenhum operador
-	all c: Cliente | lone op:OperadorDeCaixa | ehCliente[c, op]
+	all c: Cliente | lone op:OperadorDeCaixa | all t:Time | ehCliente[c, op,t]
 
 	//Todo cliente é atendido por um ou nenhum vendedor
-	all c: Cliente | lone v: Vendedor | ehCliente[c,v]
+	all c: Cliente | lone v: Vendedor | all t:Time | ehCliente[c,v,t]
 
 	//Se um cliente foi atendido por um vendedor, ele também deve ter sido atendido por um operador de caixa
-	all c: Cliente | one operadoresAssociados[c] implies one vendedoresAssociados[c]
+	all c: Cliente | all t:Time | one operadoresAssociados[c,t] implies one vendedoresAssociados[c,t]
 
 	//O cliente só pode ter um cartão se for atendido por um promotor de cartão
-	all c: Cliente | fezCartoes[c] implies one promotoresAssociados[c]
+	all c: Cliente | all t:Time |  fezCartoes[c,t] implies one promotoresAssociados[c,t]
 	
 	//O cliente só pode ter um item se for atendido por um vendedor
-	all c: Cliente | temItem[c] implies one vendedoresAssociados[c]
+	all c: Cliente | all t:Time | temItem[c,t] implies one vendedoresAssociados[c,t]
 
 	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
-	all c: Cliente | fezCompras[c] implies one operadoresAssociados[c]
+	all c: Cliente | all t:Time | fezCompras[c,t] implies one operadoresAssociados[c,t]
 }
 
 
 
 //DECLARAÇÃO DAS FUNÇÕES
-
 fun vendedoresDaLoja[lj: Loja]: set Vendedor {
 	lj.vendedores
 }
@@ -154,37 +148,39 @@ fun operadoresDaLoja[lj: Loja]: set OperadorDeCaixa{
 	lj.operadores
 }
 
-fun vendedoresAssociados[c:Cliente]: set Vendedor {
-	c.~clientesVendedor
+fun vendedoresAssociados[c: Cliente, t: Time]: set Vendedor {
+	c.~(clientesVendedor.t)
 }
 
-fun promotoresAssociados[c:Cliente]: set PromotorDeCartao {
-	c.~clientesPromotor
+fun promotoresAssociados[c:Cliente, t:Time]: set PromotorDeCartao {
+	c.~(clientesPromotor.t)
 }
 
-fun operadoresAssociados[c:Cliente]: set OperadorDeCaixa {
-	c.~clientesOperador
+fun operadoresAssociados[c:Cliente, t:Time]: set OperadorDeCaixa {
+	c.~(clientesOperador.t)
+}
+
+fun itensDeCompra[c: Cliente, t:Time]: set Item{
+	(c.(compras.t)).(itens.t)
 }
 
 
 //DECLARAÇÃO DOS PREDICADOS
 
-pred show[]{}
-
-pred ehCliente[c:Cliente, prom:PromotorDeCartao]{
-	c in prom.clientesPromotor
+pred ehCliente[c:Cliente, prom:PromotorDeCartao, t:Time]{
+	c in prom.(clientesPromotor.t)
 }
 
-pred ehCliente[c:Cliente, op:OperadorDeCaixa]{
-	c in op.clientesOperador 
+pred ehCliente[c:Cliente, op:OperadorDeCaixa, t:Time]{
+	c in op.(clientesOperador.t)
 }
 
-pred ehCliente[c:Cliente, v:Vendedor]{
-	c in v.clientesVendedor
+pred ehCliente[c:Cliente, v:Vendedor, t: Time]{
+	c in v.(clientesVendedor.t)
 }
 
-pred clienteFoiAtendido[cliente:Cliente]{
-	some cliente.~clientesVendedor or some cliente.~clientesOperador or some cliente.~clientesPromotor
+pred clienteFoiAtendido[cliente:Cliente, t:Time]{
+	some cliente.~(clientesVendedor.t) or some cliente.~(clientesOperador.t) or some cliente.~(clientesPromotor.t)
 }
 
 pred ehVendedor[f: Funcionario, lj: Loja] {
@@ -199,39 +195,42 @@ pred ehPromotorDeCaixa[f: Funcionario, lj: Loja]{
 	f in lj.promotores
 }
 
-pred fezCompras[c:Cliente]{
-	some c.compras
+pred fezCompras[c:Cliente, t: Time]{
+	some c.(compras.t)
 }
 
-pred fezCartoes[c:Cliente]{
-	some c.cartoes
+pred fezCartoes[c:Cliente, t:Time]{
+	some c.(cartoes.t)
 }
 
-pred temItem[c:Cliente]{
-	some (c.compras).itens
+pred temItem[c:Cliente, t:Time]{
+	some itensDeCompra[c,t]
 }
 
-/*pred venda[v:Vendedor, c:Cliente, i:Item, t,t':Time] {
+pred init [t:Time] {}
+
+pred venda[v:Vendedor, c:Cliente, i:Item, t,t':Time] {
+	c not in (v.clientesVendedor).t
+	(v.clientesVendedor).t' = (v.clientesVendedor).t + c
+
+	i not in itensDeCompra[c,t]
+	itensDeCompra[c,t'] = itensDeCompra[c,t]+ i
 	
-	c not in (v.clientes).t
-	(v.clientes).t' = (v.clientes).t + c
-	(c.itens).t' = (c.itens).t + i
-	
-}*/
+}
 
 
 
 //DECLARAÇÃO DOS ASSERTS
 assert clienteNaoFoiAtendidoPorMuitosVendedores {
-	all c:Cliente | #(c.~clientesVendedor) = 0 or #(c.~clientesVendedor) = 1
+	all c:Cliente | all t:Time | #(c.~(clientesVendedor.t)) = 0 or #(c.~(clientesVendedor.t)) = 1
 }
 
 assert clienteNaoFoiAtendidoPorMuitosPromotores{
-	all c:Cliente | #(c.~clientesPromotor) = 0 or #(c.~clientesPromotor) = 1
+	all c:Cliente | all t:Time | #(c.~(clientesPromotor.t)) = 0 or #(c.~(clientesPromotor.t)) = 1
 }
 
 assert clienteNaoFoiAtendidoPorMuitosOperadores {
-	all c:Cliente | #(c.~clientesOperador) = 0 or #(c.~clientesOperador) = 1
+	all c:Cliente | all t:Time | #(c.~(clientesOperador.t)) = 0 or #(c.~(clientesOperador.t)) = 1
 }
 
 assert aLojaTemVendedores{
@@ -247,12 +246,12 @@ assert aLojaTemOperadores{
 }
 
 assert seNaoEhClienteVendedorNaoEhClienteOperador{
-	all c: Cliente | no c.~clientesVendedor implies no c.~clientesOperador
+	all c: Cliente | all t: Time | no c.~(clientesVendedor.t) implies no c.~(clientesOperador.t)
 }
 
 
 //RUNs E CHECKs
-run show for 11
+run{} for 11
 --check aLojaTemVendedores for 11
 --check aLojaTemPromotores for 11
 --check aLojaTemOperadores for 11
@@ -268,8 +267,6 @@ run show for 11
 
 //Perguntas
 //Pode existir cliente que não faz compras ou cartão? depende
-//O cliente pode ter mais de um cartão? n
 //O cliente pode fazer mais de uma compra? s
-//O cliente pode ser atendido por mais de um funcionario do mesmo tipo? n
 
 
