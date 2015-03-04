@@ -3,6 +3,8 @@ module projeto
 open util/ordering[Time]
 
 
+
+
 //DECLARAÇÃO DAS ASSINATURAS
 
 sig Time {}
@@ -13,19 +15,24 @@ one sig Loja {
 	promotores: some PromotorDeCartao
 }
 
+
 abstract sig Funcionario {}
+
 
 sig Vendedor extends Funcionario {
 	clientesVendedor: Cliente lone -> Time
 }
 
+
 sig OperadorDeCaixa extends Funcionario {
 	clientesOperador: Cliente lone -> Time
 }
 
+
 sig PromotorDeCartao extends Funcionario {
 	clientesPromotor: Cliente lone -> Time
 }
+
 
 sig Cliente {
 	nome: one Id, 
@@ -33,7 +40,8 @@ sig Cliente {
 	cartoes: Cartao lone -> Time
 }
 
-sig Id{}
+
+abstract sig Id{}
 
 abstract sig Item {}
 
@@ -48,6 +56,8 @@ sig CompraCheque, CompraAPrazo extends Compra {}
 abstract sig Cartao {}
 
 sig CartaoSimples, CartaoComDependente extends Cartao {}
+
+
 
 
 
@@ -111,14 +121,15 @@ fact cliente {
 	//Toda Id pertence a um Cliente
 	all id: Id | one id.~nome
 
+	//all c: Cliente, prom: Promotor, t: Time, t': Time | 
 	//Todo cliente é atendido por um ou nenhum promotor
-	all c: Cliente | lone prom: PromotorDeCartao | all t:Time | ehCliente[c, prom,t]
+	all c: Cliente | all prom: PromotorDeCartao | all t:Time | ehCliente[c, prom,t]
 
 	//Todo cliente é atendido por um ou nenhum operador
-	all c: Cliente | lone op:OperadorDeCaixa | all t:Time | ehCliente[c, op,t]
+	all c: Cliente | all op:OperadorDeCaixa | all t:Time | ehCliente[c, op,t]
 
 	//Todo cliente é atendido por um ou nenhum vendedor
-	all c: Cliente | lone v: Vendedor | all t:Time | ehCliente[c,v,t]
+	all c: Cliente | all v: Vendedor | all t:Time | ehCliente[c,v,t]
 
 	//Se um cliente foi atendido por um vendedor, ele também deve ter sido atendido por um operador de caixa
 	all c: Cliente | all t:Time | one operadoresAssociados[c,t] implies one vendedoresAssociados[c,t]
@@ -132,6 +143,17 @@ fact cliente {
 	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
 	all c: Cliente | all t:Time | fezCompras[c,t] implies one operadoresAssociados[c,t]
 }
+
+
+/*fact traces {
+	init[first]
+	all pre: Time - last | let pos = pre.next |
+	all c: Cliente, op:OperadorDeCaixa, prom: PromotorDeCartao, v: Vendedor | 
+	fazerCartao[c, prom, pre, pos] or
+	efetuarVenda[c, v, pre, pos] and
+	passarCompra[c, op, pre, pos]
+}*/
+
 
 
 
@@ -168,15 +190,16 @@ fun itensDeCompra[c: Cliente, t:Time]: set Item{
 //DECLARAÇÃO DOS PREDICADOS
 
 pred ehCliente[c:Cliente, prom:PromotorDeCartao, t:Time]{
-	c in prom.(clientesPromotor.t)
+	(c in prom.clientesPromotor.t => (all prom2: PromotorDeCartao - prom | c !in prom2.clientesPromotor.t))
 }
 
 pred ehCliente[c:Cliente, op:OperadorDeCaixa, t:Time]{
-	c in op.(clientesOperador.t)
+
+	(c in op.clientesOperador.t => (all op2: OperadorDeCaixa - op | c !in op2.clientesOperador.t))
 }
 
 pred ehCliente[c:Cliente, v:Vendedor, t: Time]{
-	c in v.(clientesVendedor.t)
+		(c in v.clientesVendedor.t => (all v2: Vendedor - v | c !in v2.clientesVendedor.t))
 }
 
 pred clienteFoiAtendido[cliente:Cliente, t:Time]{
@@ -207,19 +230,46 @@ pred temItem[c:Cliente, t:Time]{
 	some itensDeCompra[c,t]
 }
 
-pred init [t:Time] {}
-
-pred venda[v:Vendedor, c:Cliente, i:Item, t,t':Time] {
-	c not in (v.clientesVendedor).t
-	(v.clientesVendedor).t' = (v.clientesVendedor).t + c
-
-	i not in itensDeCompra[c,t]
-	itensDeCompra[c,t'] = itensDeCompra[c,t]+ i
-	
+pred init [t:Time] {
+	no clientesPromotor.t
+	no clientesVendedor.t
+	no clientesOperador.t
 }
 
 
+pred promotorDoClienteNaoMuda[cliente: Cliente, prom: PromotorDeCartao, t,t': Time]{
+	prom.(clientesPromotor.t') = prom.(clientesPromotor.t)
+}
 
+
+pred fazerCartao[c:Cliente, prom:PromotorDeCartao, t,t': Time] {
+	c !in (prom.clientesPromotor).t
+		(prom.clientesPromotor).t' = (prom.clientesPromotor).t + c
+	promotorDoClienteNaoMuda[c, prom, t,t']
+}
+
+pred vendedorDoClienteNaoMuda[cliente: Cliente, v:Vendedor, t,t': Time]{
+	v.(clientesVendedor.t') = v.(clientesVendedor.t)
+}
+
+pred efetuarVenda[c:Cliente, v:Vendedor, t,t':Time] {
+	c !in (v.clientesVendedor).t
+		(v.clientesVendedor).t' = (v.clientesVendedor).t + c
+	vendedorDoClienteNaoMuda[c, v, t, t']
+}
+
+pred operadorDoClienteNaoMuda[c: Cliente, op: OperadorDeCaixa, t,t': Time]{
+	op.(clientesOperador.t') = op.(clientesOperador.t)
+}
+
+pred passarCompra[c: Cliente, op: OperadorDeCaixa,t, t': Time]{
+	c !in (op.clientesOperador).t
+		(op.clientesOperador).t' = (op.clientesOperador).t + c
+	operadorDoClienteNaoMuda[c, op, t ,t']
+}
+
+
+ 
 //DECLARAÇÃO DOS ASSERTS
 assert clienteNaoFoiAtendidoPorMuitosVendedores {
 	all c:Cliente | all t:Time | #(c.~(clientesVendedor.t)) = 0 or #(c.~(clientesVendedor.t)) = 1
@@ -250,15 +300,17 @@ assert seNaoEhClienteVendedorNaoEhClienteOperador{
 }
 
 
+
+
 //RUNs E CHECKs
 run{} for 11
---check aLojaTemVendedores for 11
---check aLojaTemPromotores for 11
---check aLojaTemOperadores for 11
---check clienteNaoFoiAtendidoPorMuitosVendedores for 11
---check clienteNaoFoiAtendidoPorMuitosPromotores for 11
---check clienteNaoFoiAtendidoPorMuitosOperadores for 11
---check seNaoEhClienteVendedorNaoEhClienteOperador for 11
+check aLojaTemVendedores for 11
+check aLojaTemPromotores for 11
+check aLojaTemOperadores for 11
+check clienteNaoFoiAtendidoPorMuitosVendedores for 11
+check clienteNaoFoiAtendidoPorMuitosPromotores for 11
+check clienteNaoFoiAtendidoPorMuitosOperadores for 11
+check seNaoEhClienteVendedorNaoEhClienteOperador for 11
 
 
 
