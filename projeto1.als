@@ -160,7 +160,7 @@ fact status {
 
 //TRACES
 pred init[t:Time] {
-#(PromotorDeCartao.clientesPromotor).t = 0
+//#(PromotorDeCartao.clientesPromotor).t = 0
 //#(Vendedor.clientesVendedor).t = 0
 //#(OperadorDeCaixa.clientesOperador).t = 0
 
@@ -175,7 +175,7 @@ fact traces {
    init[first]
 	all pre: Time-last | let pos = pre.next |
 //	one c: Cliente, op:OperadorDeCaixa, prom:PromotorDeCartao,  v: Vendedor | 
-	all c: Cliente, prom:PromotorDeCartao |
+	some c: Cliente, prom:PromotorDeCartao |
 		fazerCartao[c, prom, pre, pos]// or
 	//	some v: Vendedor |
 	  // efetuarVenda[c, v, pre, pos] 
@@ -317,9 +317,9 @@ pred fazerCartao[c:Cliente, prom:PromotorDeCartao, t,t': Time] {
 (c not in prom.clientesPromotor.t) => 
 	(prom.clientesPromotor).t' = (prom.clientesPromotor).t + c
 	
-	//clienteDoPromotorNaoMudam[PromotorDeCartao - prom, t, t']
- 	//all v: Vendedor | clienteDoVendedorNaoMudam[v, t, t']
-   ///all o: OperadorDeCaixa | clienteDoOperadorNaoMudam[o, t, t' ]
+	clienteDoPromotorNaoMudam[PromotorDeCartao - prom, t, t']
+ 	all v: Vendedor | clienteDoVendedorNaoMudam[v, t, t']
+   all o: OperadorDeCaixa | clienteDoOperadorNaoMudam[o, t, t' ]
 }
 
 
