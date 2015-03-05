@@ -15,24 +15,24 @@ one sig Loja {
 
 
 abstract sig Funcionario {
-	//status: Status -> Time
+	status: StatusPremiado -> Time
 }
 
 sig Vendedor extends Funcionario {
-	clientesVendedor: Cliente -> Time
-	/*statusVendedorPremiado: statusPremiado one -> Time*/
+	clientesVendedor: Cliente -> Time,
+	statusVendedor: StatusPremiado one -> Time
 }
 
 
 sig OperadorDeCaixa extends Funcionario {
-	clientesOperador: Cliente -> Time
-	/*statusOperadorPremiado: statusPremiado one -> Time*/
+	clientesOperador: Cliente -> Time,
+	statusOperador: StatusPremiado one -> Time
 }
 
 
 sig PromotorDeCartao extends Funcionario {
-	clientesPromotor: Cliente -> Time
-	/*statusPromotorPremiado: statusPremiado one -> Time*/
+	clientesPromotor: Cliente -> Time,
+	statusPromotor: StatusPremiado one -> Time
 }
 
 
@@ -59,13 +59,13 @@ abstract sig Cartao {}
 
 sig CartaoSimples, CartaoComDependente extends Cartao {}
 
-/*
+
 abstract sig StatusPremiado{
 }
 
 sig Premiado, NaoPremiado extends StatusPremiado{
 }
-*/
+
 
 
 
@@ -150,13 +150,12 @@ fact cliente {
 	all c: Cliente | all t,t':Time | fezCompras[c,t] iff one operadoresAssociados[c,t] and comprasDoClienteNaoMudam[c, t, t']
 }
 
-/*
 fact status {
-	all st: Status, t: Time | one st.~(status.t)
+	all st: StatusPremiado, t: Time | one st.~(status.t)
 
 	all f: Funcionario, t: Time | one f.status.t
 }
-*/
+
 
 //TRACES
 pred init[t:Time] {
@@ -175,11 +174,10 @@ fact traces {
    init[first]
 	all pre: Time-last | let pos = pre.next |
 //	one c: Cliente, op:OperadorDeCaixa, prom:PromotorDeCartao,  v: Vendedor | 
-	some c: Cliente, prom:PromotorDeCartao |
-		fazerCartao[c, prom, pre, pos]// or
-	//	some v: Vendedor |
-	  // efetuarVenda[c, v, pre, pos] 
-	///	passarCompra[c, op, pre, pos]
+	some c: Cliente, prom:PromotorDeCartao, v: Vendedor, op:OperadorDeCaixa |
+		fazerCartao[c, prom, pre, pos] or
+		efetuarVenda[c, v, pre, pos] or
+		passarCompra[c, op, pre, pos]
 }
 
 
@@ -341,26 +339,29 @@ pred passarCompra[c: Cliente, op: OperadorDeCaixa,t, t': Time]{
    clienteDoOperadorNaoMudam[OperadorDeCaixa - op, t, t' ]
 }
 
-/*
+
 pred premiaVendedor[v: Vendedor, t, t': Time]{
-	v.(statusVendedor.t) in statusNaoPremiado and 
-	(some calcado: Calcado, roupa: Roupa |	(calcado + roupa) in v.(clientesVendedor.t).(compras.t).(itens.t)) implies	v.(statusVendedor.t') = statusPremiado
+	v.(statusVendedor.t) in NaoPremiado and 
+	(some calcado: Calcado, roupa: Roupa |	(calcado + roupa) in v.(clientesVendedor.t).(compras.t).(itens.t)) implies	v.(statusVendedor.t') = Premiado
 }
 
- 
-pred premiaOperador[op:Operador, t, t': Time]{
-	op.(statusOperadorPremiado.t) in statusNaoPremiado and --Um operador de caixa tem que passar
- pelo menos uma compra no cartão em dez vezes e
+
+pred premiaOperador[op:OperadorDeCaixa, t, t': Time]{
+	op.(statusOperador.t) in NaoPremiado and 
+	(some compra1: CompraAPrazo, compra2: CompraCheque | (compra1 + compra2) in op.(clientesOperador.t).(compras.t)) implies op.(statusOperador.t') = Premiado
+--Um operador de caixa tem que passar pelo menos uma compra no cartão em dez vezes e
 -- pelo menos uma compra no cartão da loja com cem dias para pagar (Lascou)
-	op.(statusOperadorPremiado.t') = statusPremiado
+	
 }
 
-pred premiaPromotor[prom: Promotor, t, t': Time]{
-	prom.(statusPromotorPremiado.t) in statusNaoPremiado and --deve fazer no mínimo dois cartões de 
+pred premiaPromotor[prom: PromotorDeCartao, t, t': Time]{
+	prom.(statusPromotor.t) in NaoPremiado and
+   (some cartao: CartaoComDependente |  (#prom.(clientesPromotor.t).(cartoes.t) >= 2 and cartao in prom.(clientesPromotor.t).(cartoes.t))) implies prom.(statusPromotor.t') = Premiado
+ --deve fazer no mínimo dois cartões de 
 --crédito onde pelo menos um com dependente
-	prom.(statusPromotorPremiado.t') = statusPremiado
+
 }
-*/
+
 
 //DECLARAÇÃO DOS ASSERTS
 assert clienteNaoFoiAtendidoPorMuitosVendedores {
