@@ -131,10 +131,10 @@ fun operadoresDaLoja[lj: Loja]: set OperadorDeCaixa{
 
 ------------------------------------------------PREDICADOS----------------------------------------------------------------------------------------------------
 pred init[t:Time] {
-	#(PromotorDeCartao.clientesPromotor).t = 0
+	/*#(PromotorDeCartao.clientesPromotor).t = 0
 	#(Vendedor.clientesVendedor).t = 0
 	#(OperadorDeCaixa.clientesOperador).t = 0
-//	#(Cliente.cartoes).t = 0
+//	#(Cliente.cartoes).t = 0*/
 }
 
 
