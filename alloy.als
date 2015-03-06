@@ -3,7 +3,7 @@ module projeto
 open util/ordering[Time]
 
 
-//---------------------------------------------------------------------------------DECLARAÇÃO DAS ASSINATURAS
+------------------------------------------------------------DECLARAÇÃO DAS ASSINATURAS--------------------------------------------------
 
 sig Time {}
 
@@ -13,45 +13,42 @@ one sig Loja {
 	promotores: set PromotorDeCartao,
 	clientes: Cliente -> Time
 }
+
 abstract sig Funcionario {}
 
 sig Vendedor extends Funcionario {
 	clientesVendedor: Cliente -> Time
-	/*statusVendedorPremiado: statusPremiado one -> Time*/
 }
 
 sig OperadorDeCaixa extends Funcionario {
 	clientesOperador: Cliente -> Time
-	/*statusOperadorPremiado: statusPremiado one -> Time*/
 }
 
 sig PromotorDeCartao extends Funcionario {
 	clientesPromotor: Cliente -> Time
-	/*statusPromotorPremiado: statusPremiado one -> Time*/
 }
 
 sig Cliente {
 	nome: one Id, 
-	//compras: Compra -> Time,
-	//cartoes: Cartao -> Time
+	compras: Compra -> Time,
+	cartoes: Cartao one -> Time
 }
 
 
 abstract sig Id{}
 
-//abstract sig Item {}
+abstract sig Item {}
+sig Calcado, Roupa extends Item {}
 
-//sig Calcado, Roupa extends Item {}
+abstract sig Compra {
+	itens: Item -> Time
+}
 
-//abstract sig Compra {
-//	itens: Item -> Time
-//}
+sig CompraCheque, CompraAPrazo extends Compra {}
 
-//sig CompraCheque, CompraAPrazo extends Compra {}
+abstract sig Cartao {}
 
-//abstract sig Cartao {}
-
-//sig CartaoSimples, CartaoComDependente extends Cartao {}
+sig CartaoSimples, CartaoComDependente extends Cartao {}
 
 -----------------------------------------------------FATOS-------------------------------------------------------------------------------------------------------------------------
 
@@ -82,12 +79,15 @@ fact funcionarios {
 
 
 fact cliente {
-//	all cliente: Cliente | all t:Time | clienteFoiAtendido[cliente,t] 	//Todo cliente foi atendido por pelo menos um funcionário
+	//Todo cliente foi atendido por pelo menos um funcionário
 	all cli: Cliente , t: Time| one cli.~(clientes.t)
+
 	//A Id de um cliente deve ser única
 	all cliente: Cliente | one cliente.nome
+
 	//Toda Id pertence a um Cliente
 	all id: Id | one id.~nome
+
 	//Todo cliente é atendido por um único  ou nenhum promotor
 	all c: Cliente, prom: PromotorDeCartao, t:Time |  ehClienteDeUmPromotor[c, prom,t]
 
@@ -97,19 +97,21 @@ fact cliente {
 	//Todo cliente é atendido por um único ou nenhum vendedor
 	all c: Cliente, v: Vendedor, t:Time | ehClienteDeUmVendedor[c,v,t]
 
-	//Se um cliente foi atendido por um operador de caixa, ele deve ter sido atendido por um vendedor antes
-//	all c: Cliente, op: OperadorDeCaixa, v: Vendedor, t': Time - last | (passarCompra[c, op, last, t'] => efetuarVenda[c, v, last, t'])
-
-	//O cliente só pode ter um cartão se for atendido por um promotor de cartão
-	//all c: Cliente | all t,t':Time |  fezCartoes[c,t] iff one promotoresAssociados[c,t] and cartaoDoClienteNaoMuda[c, t,t']
-	
-	//O cliente só pode ter um item se for atendido por um vendedor
-	//all c: Cliente | all t:Time | temItem[c,t] iff one vendedoresAssociados[c,t]
-
-	//O cliente só pode fazer uma compra se for atendido por um operador de caixa
-	//all c: Cliente | all t,t':Time | fezCompras[c,t] iff one operadoresAssociados[c,t] and comprasDoClienteNaoMudam[c, t, t']
+	//Quem tem um cartão, foi atendido por um promotor de cartão
+	all c: Cliente, t:Time | some c.cartoes.t => some c.~(clientesPromotor.t)
 }
 
+fact cartoes {
+	//Todo cartão só possui um dono
+	all card: Cartao, t:Time | one card.~(cartoes.t)
+}
+
+fact comprasEItens {
+	all compra: Compra, t: Time | one compra.~(compras.t)
+	all item: Item, t: Time | one item.~(itens.t)
+	all c: Cliente, t: Time | lone c.compras.t
+	all compra: Compra, t: Time | some compra.itens.t
+}
 
 -------------------------------------------------------FUNÇÕES---------------------------------------------------------------------------------------------------------------
 
@@ -129,10 +131,10 @@ fun operadoresDaLoja[lj: Loja]: set OperadorDeCaixa{
 
 ------------------------------------------------PREDICADOS----------------------------------------------------------------------------------------------------
 pred init[t:Time] {
-#(PromotorDeCartao.clientesPromotor).t = 0
-#(Vendedor.clientesVendedor).t = 0
-#(OperadorDeCaixa.clientesOperador).t = 0
-	
+	#(PromotorDeCartao.clientesPromotor).t = 0
+	#(Vendedor.clientesVendedor).t = 0
+	#(OperadorDeCaixa.clientesOperador).t = 0
+//	#(Cliente.cartoes).t = 0
 }
 
 
@@ -156,21 +158,25 @@ pred ehClienteDeUmVendedor[c:Cliente, v:Vendedor, t: Time]{
 }
 
 
-
-pred clienteDoPromotorNaoMudam[promotores: set PromotorDeCartao, t, t' : Time] {-- Os promotores passados como parâmetro não mudam
+-- Os promotores passados como parâmetro não mudam
+pred clienteDoPromotorNaoMudam[promotores: set PromotorDeCartao, t, t' : Time] {
 	all p: promotores | 
 		(p.clientesPromotor).t' = (p.clientesPromotor).t
 }
 
-pred clienteDoVendedorNaoMudam[vendedores: set Vendedor, t, t' : Time] {-- Os vendedores passados como parâmetro não mudam
+-- Os vendedores passados como parâmetro não mudam
+pred clienteDoVendedorNaoMudam[vendedores: set Vendedor, t, t' : Time] {
 	all p: vendedores | 
 		(p.clientesVendedor).t' = (p.clientesVendedor).t
 
 }
-pred clienteDoOperadorNaoMudam[operadores: set OperadorDeCaixa, t, t' : Time] {-- Os operadores passados como parâmetro não mudam
+
+-- Os operadores passados como parâmetro não mudam
+pred clienteDoOperadorNaoMudam[operadores: set OperadorDeCaixa, t, t' : Time] {
 	all p: operadores | 
 		(p.clientesOperador).t' = (p.clientesOperador).t
 }
+
 
 -----------------------------------------------------------------OPERAÇÕES---------------------------------------------------------------------------------------------------------
 
@@ -180,6 +186,7 @@ pred fazerCartao[c:Cliente, prom:PromotorDeCartao, t,t': Time] {
    all prom2 :PromotorDeCartao |	clienteDoPromotorNaoMudam[prom2 - prom, t, t']
    all v: Vendedor | clienteDoVendedorNaoMudam[v, t, t']
    all o: OperadorDeCaixa | clienteDoOperadorNaoMudam[o, t, t' ]
+	all c2: Cliente | one card: Cartao | card !in (c2.cartoes).t => c.cartoes.t' = c.cartoes.t + card
 }
 
 
@@ -193,17 +200,29 @@ pred efetuarVenda[c:Cliente, v:Vendedor, t,t':Time] {
 
 pred passarCompra[c: Cliente, op: OperadorDeCaixa,t, t': Time]{
 	all op2: OperadorDeCaixa | c !in (op2.clientesOperador).t => (op.clientesOperador).t' = (op.clientesOperador).t + c
-	one c.~(clientesVendedor.t) // adicionei isso aqui: Julio
+	one c.~(clientesVendedor.t)
 	all p : PromotorDeCartao |	clienteDoPromotorNaoMudam[p, t, t']
    all v: Vendedor | clienteDoVendedorNaoMudam[ v, t, t']
 	all op2: OperadorDeCaixa | clienteDoOperadorNaoMudam[op2 - op, t, t' ]
+	all c2: Cliente | one compra: Compra | compra !in (c2.compras).t => c.compras.t' = c.compras.t + compra
 }
 
-----------------------------------------------ASSERTS--------------------------------------------------
+
+---------------------------------------------------------------ASSERTS---------------------------------------------------------------------------------------
 assert soPassaCompraSeEfetuarVenda{
 	all c: Cliente, op: OperadorDeCaixa, t: Time - last | let t' = t.next | passarCompra[c, op, t, t'] => one c.~(clientesVendedor.t)
 }
 
+assert todaCompraTemItens {
+	all com: Compra, t: Time | some com.itens.t
+}
 
-run{} for 10
+assert todoItemPertenceAUmaUnicaCompra {
+	all item: Item, t: Time | one item.~(itens.t)
+}
+
+
+run{} for 11
 check soPassaCompraSeEfetuarVenda for 10
+check todaCompraTemItens for 10
+check todoItemPertenceAUmaUnicaCompra for 10
